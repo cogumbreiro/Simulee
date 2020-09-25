@@ -332,6 +332,9 @@ class Function(object):
             argument_lst = [item[1] for item in argument_lst]
             target_function = Function(body, function_name, argument_lst, type_lst)
             target_env.add_value(function_name, target_function)
+        # Infer shared sections automatically
+        Function.read_shared_section(target_file, target_env)
+
 
     @staticmethod
     def parse_function_body(target_content, start_index):
@@ -345,6 +348,29 @@ class Function(object):
             result_content += target_content[start_index]
             start_index += 1
         return result_content[: len(result_content) - 1]
+
+    @staticmethod
+    def read_shared_section(target_file, target_env):
+        shared = dict()
+        for line in open(target_file, 'r'):
+            if line.startswith("@"):
+                line = line.strip().split("=", 1)
+                print(line)
+                if len(line) != 2:
+                    continue
+                name, data = line
+                name = name.strip()
+                data = list(x.strip() for x in data.split(","))
+                if len(data) >= 2 and "section \"__shared__\"" in data and data[0].startswith("internal global"):
+                    data = data[0].split(" x ", 1)
+                    if len(data) == 2:
+                        data = data[1]
+                        data = data.split("]")[0]
+                        shared[name] = data + "*"
+        for func in target_env.env.values():
+            if isinstance(func, Function):
+                func.shared = dict(shared)
+
 
     @staticmethod
     def read_function_from_file_include_struct(target_file, target_env):
@@ -362,7 +388,8 @@ class Function(object):
             argument_lst = [item[1] for item in argument_lst]
             target_function = Function(body, function_name, argument_lst, type_lst)
             target_env.add_value(function_name, target_function)
-
+        # Infer shared sections automatically
+        Function.read_shared_section(target_file, target_env)
 
 class ProgramFlow(object):
 
