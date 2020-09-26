@@ -38,23 +38,22 @@ class DimensionFactory:
         return current_class((-1, -1, 0), tuple(dimension_vector))
 
 
-def class_generator(target_file, target_function_name, main_memory, is_branch=False):
+def class_generator(prog_file, is_branch=False):
     if not is_branch:
-        heuristic_content = generate_heuristic_code(target_file, target_function_name, main_memory)
+        heuristic_content = generate_heuristic_code(prog_file)
     else:
-        heuristic_content = generate_branch_heuristic_code(target_file, target_function_name)
+        heuristic_content = generate_branch_heuristic_code(prog_file)
     dimension_handler = DimensionFactory(3, 5, heuristic_content[4][0], heuristic_content[4][1])
     return heuristic_content, dimension_handler
 
 
 class ArgumentsItem:
-    def __init__(self, target_file, target_function_name, main_memory,
+    def __init__(self, prog_file,
                  heuristic_content, blocks, threads, evolve_dimension=False):
+        self.prog_file = prog_file
         self.heuristic_content = heuristic_content
         self.codes, self.global_env, self.should_evolution, all_variables, self.dimension = \
             heuristic_content[0]
-        self.target_file = target_file
-        self.target_function_name = target_function_name
         self.codes = '\n'.join([item[0] for item in self.codes])
         self.initial_argus = self.construct_argus_dict(all_variables)
         self.type_dict = self.construct_dict_from_tuple(all_variables)
@@ -62,8 +61,6 @@ class ArgumentsItem:
         self.father_generate = None
         self.step_size = 0
         self.score = None
-        self.main_memory = main_memory
-        self.function_name = target_function_name
         self.dimension_handler = heuristic_content[1]
         self.evolve_dimension = evolve_dimension
         if evolve_dimension:  # for initialized
@@ -98,21 +95,19 @@ class ArgumentsItem:
 
     def mutation(self):
         if self.evolve_dimension:
-            normal_item = ArgumentsItem(self.target_file, self.target_function_name, self.main_memory,
+            normal_item = ArgumentsItem(self.prog_file,
                                         self.heuristic_content,
                                         self.dimension_handler.mutation(self.blocks.grid_dim, True),
                                         self.dimension_handler.mutation(self.threads.block_dim, False))
-            cauchy_item = ArgumentsItem(self.target_file, self.target_function_name, self.main_memory,
+            cauchy_item = ArgumentsItem(self.prog_file,
                                         self.heuristic_content,
                                         self.dimension_handler.mutation(self.blocks.grid_dim, True),
                                         self.dimension_handler.mutation(self.threads.block_dim, False))
             normal_item.evolve_dimension = True
             cauchy_item.evolve_dimension = True
         else:
-            normal_item = ArgumentsItem(self.target_file, self.target_function_name, self.main_memory,
-                                        self.heuristic_content, self.blocks, self.threads)
-            cauchy_item = ArgumentsItem(self.target_file, self.target_function_name, self.main_memory,
-                                        self.heuristic_content, self.blocks, self.threads)
+            normal_item = ArgumentsItem(self.prog_file, self.heuristic_content, self.blocks, self.threads)
+            cauchy_item = ArgumentsItem(self.prog_file, self.heuristic_content, self.blocks, self.threads)
         normal_item.father_item = self
         self.copy_initial_argus_to_target(normal_item)
         normal_item.father_generate = "normal"
@@ -142,12 +137,15 @@ class ArgumentsItem:
 
     def fitness(self):
         memory_lst = list()
-        if self.main_memory["shared"] is not None:
-            memory_lst.append(self.main_memory["shared"])
+        func = self.global_env.get_value(self.prog_file.function_name)
+        main_memory = func.main_memory
+        for entry in main_memory["shared"]:
+            memory_lst.append(entry)
         generate_memory_container(memory_lst, self.global_env)
         number_arguments = self.construct_running_arguments()
-        arguments = generate_arguments(self.global_env.get_value(self.function_name), number_arguments)
-        arguments["main_memory"] = self.main_memory
+        arguments = generate_arguments(func, number_arguments)
+        arguments["main_memory"] = main_memory
+
         try:
             self.global_access, self.shared_access = execute_heuristic(self.blocks, self.threads, self.codes, arguments,
                                                                        self.global_env, False)
@@ -194,16 +192,16 @@ class ArgumentsItem:
 
 
 class BranchItem(ArgumentsItem):
-    def __init__(self, target_file, target_function_name, main_memory,
+    def __init__(self, prog_file,
                  heuristic_content, blocks, threads, evolve_dimension=False):
-        ArgumentsItem.__init__(self, target_file, target_function_name, main_memory,
+        ArgumentsItem.__init__(self, prog_file,
                                heuristic_content, blocks, threads, evolve_dimension)
         self.total_label = len([item for item in self.codes.split("\n") if item.find("<label>") != -1])
 
     def fitness(self):
         generate_memory_container([], self.global_env)
         number_arguments = self.construct_running_arguments()
-        arguments = generate_arguments(self.global_env.get_value(self.function_name), number_arguments)
+        arguments = generate_arguments(self.global_env.get_value(self.prog_file.function_name), number_arguments)
         arguments["main_memory"] = self.main_memory
         access_label_dict = execute_branch_heuristic(self.blocks, self.threads, self.codes,
                                                      arguments, self.global_env, False)
@@ -221,20 +219,20 @@ class BranchItem(ArgumentsItem):
 
     def mutation(self):
         if self.evolve_dimension:
-            normal_item = BranchItem(self.target_file, self.target_function_name, self.main_memory,
+            normal_item = BranchItem(self.prog_file,
                                      self.heuristic_content,
                                      self.dimension_handler.mutation(self.blocks.grid_dim, True),
                                      self.dimension_handler.mutation(self.threads.block_dim, False))
-            cauchy_item = BranchItem(self.target_file, self.target_function_name, self.main_memory,
+            cauchy_item = BranchItem(self.prog_file,
                                      self.heuristic_content,
                                      self.dimension_handler.mutation(self.blocks.grid_dim, True),
                                      self.dimension_handler.mutation(self.threads.block_dim, False))
             normal_item.evolve_dimension = True
             cauchy_item.evolve_dimension = True
         else:
-            normal_item = BranchItem(self.target_file, self.target_function_name, self.main_memory,
+            normal_item = BranchItem(self.prog_file,
                                      self.heuristic_content, self.blocks, self.threads)
-            cauchy_item = BranchItem(self.target_file, self.target_function_name, self.main_memory,
+            cauchy_item = BranchItem(self.prog_file,
                                      self.heuristic_content, self.blocks, self.threads)
         normal_item.father_item = self
         self.copy_initial_argus_to_target(normal_item)
@@ -254,16 +252,16 @@ class BranchItem(ArgumentsItem):
         return normal_item, cauchy_item
 
 
-def evolutionary_item_factory(target_file, target_function_name, main_memory, blocks, threads, dimension=False,
+def evolutionary_item_factory(prog_file, blocks, threads, dimension=False,
                               is_branch=False):
-    class_arguments = class_generator(target_file, target_function_name, main_memory, is_branch)
+    class_arguments = class_generator(prog_file, is_branch)
 
     def _generator():
-        return ArgumentsItem(target_file, target_function_name, main_memory, class_arguments, blocks, threads,
+        return ArgumentsItem(prog_file, class_arguments, blocks, threads,
                              dimension)
 
     def _branch_generator():
-        return BranchItem(target_file, target_function_name, main_memory, class_arguments, blocks, threads, dimension)
+        return BranchItem(prog_file, class_arguments, blocks, threads, dimension)
 
     return _branch_generator if is_branch else _generator
 
@@ -326,7 +324,7 @@ def show_evolution_path(target_item):
     return result_lst
 
 
-def generate_initialized_setting(target_file_path, function_name, main_memory, is_branch=False, test_round=1,
+def generate_initialized_setting(prog_file, is_branch=False, test_round=1,
                                  evolve_dimension=True, fixed_dimension=None):
     failed = 0
     total_generation = 0
@@ -335,7 +333,7 @@ def generate_initialized_setting(target_file_path, function_name, main_memory, i
         fixed_dimension = [(1, 1, 1), (34, 1, 1)]
     for i in xrange(test_round):
         start_time = time.time()
-        generator = evolutionary_item_factory(target_file_path, function_name, main_memory,
+        generator = evolutionary_item_factory(prog_file,
                                               Block((-1, -1, 0), fixed_dimension[0]),
                                               Thread((-1, -1, 0), fixed_dimension[1]), evolve_dimension, is_branch)
         generator = generator_for_evolutionary_factory(generator)
@@ -363,34 +361,32 @@ def generate_initialized_setting(target_file_path, function_name, main_memory, i
     return test_result_lst[0]
 
 
-def random_test_target_function(target_file_path, function_name, main_memory, test_round, used_default_dimension=False, fixed_dimension=None):
+def random_test_target_function(prog_file, test_round, used_default_dimension=False, fixed_dimension=None):
     if fixed_dimension is None:
         fixed_dimension = [(1, 1, 1), (34, 1, 1)]
-    class_arguments = class_generator(target_file_path, function_name, main_memory, False)
+    class_arguments = class_generator(prog_file, is_branch=False)
     start_time = time.time()
     for i in xrange(test_round):
-        argument = ArgumentsItem(target_file_path, function_name, main_memory, class_arguments, Block((-1, -1, 0), fixed_dimension[0]), Thread((-1, -1, 0), fixed_dimension[1]),
+        argument = ArgumentsItem(prog_file, class_arguments, Block((-1, -1, 0), fixed_dimension[0]), Thread((-1, -1, 0), fixed_dimension[1]),
                       not used_default_dimension)
-        global_env = parse_function(target_file_path)
-        generate_memory_container(main_memory.keys(), global_env)
-        raw_code = global_env.get_value(function_name)
+        global_env, raw_code = prog_file.parse()
         blocks = argument.blocks
         threads = argument.threads
         arguments = argument.construct_running_arguments()
         for idx, variable in enumerate(raw_code.argument_lst):
             if variable not in arguments and raw_code.type_lst[idx].find("*") == -1:
                 arguments[variable] = 2  # temp action, need more focus
-        arguments = generate_arguments(global_env.get_value(function_name), arguments)
-        arguments["main_memory"] = main_memory
+        arguments = generate_arguments(raw_code, arguments)
+        arguments["main_memory"] = raw_code.main_memory
         execute_framework(blocks, threads, raw_code.raw_codes, arguments, global_env)
         current_time = time.time()
         print "Current solution total cost time is " + str(current_time - start_time)
 
 
-def auto_test_target_function(target_file_path, function_name, main_memory, used_default_dimension=False,
+def auto_test_target_function(prog_file, used_default_dimension=False,
                               fixed_dimension=None):
     start_time = time.time()
-    solution_lst = generate_initialized_setting(target_file_path, function_name, main_memory,
+    solution_lst = generate_initialized_setting(prog_file,
                                                 evolve_dimension=not used_default_dimension,
                                                 fixed_dimension=fixed_dimension)
     print "Generation time is " + str(time.time() - start_time)
@@ -403,26 +399,24 @@ def auto_test_target_function(target_file_path, function_name, main_memory, used
             if solution_str in used_solution:
                 continue
             used_solution[solution_str] = True
-            global_env = parse_function(target_file_path)
-            generate_memory_container(main_memory.keys(), global_env)
-            raw_code = global_env.get_value(function_name)
+            global_env, raw_code = prog_file.parse()
             blocks = item[0].blocks
             threads = item[0].threads
             arguments = item[0].construct_running_arguments()
             for idx, variable in enumerate(raw_code.argument_lst):
                 if variable not in arguments and raw_code.type_lst[idx].find("*") == -1:
                     arguments[variable] = 2  # temp action, need more focus
-            arguments = generate_arguments(global_env.get_value(function_name), arguments)
-            arguments["main_memory"] = main_memory
+            arguments = generate_arguments(global_env.get_value(prog_file.function_name), arguments)
+            arguments["main_memory"] = raw_code.main_memory
             execute_framework(blocks, threads, raw_code.raw_codes, arguments, global_env)
             current_time = time.time()
             print "Current solution total cost time is " + str(current_time - start_time)
 
 
-def auto_test_target_function_dynamical(target_file_path, function_name, main_memory, used_default_dimension=False,
+def auto_test_target_function_dynamical(prog_file, used_default_dimension=False,
                                         fixed_dimension=None, initial_function=None):
     start_time = time.time()
-    solution_lst = generate_initialized_setting(target_file_path, function_name, main_memory,
+    solution_lst = generate_initialized_setting(prog_file,
                                                 evolve_dimension=not used_default_dimension,
                                                 fixed_dimension=fixed_dimension)
     print "Generation time is " + str(time.time() - start_time)
@@ -436,46 +430,43 @@ def auto_test_target_function_dynamical(target_file_path, function_name, main_me
             if solution_str in used_solution:
                 continue
             used_solution[solution_str] = True
-            global_env = parse_function(target_file_path)
-            generate_memory_container(main_memory.keys(), global_env)
+            global_env, raw_code = prog_file.parse()
             if initial_function is not None:
                 global_env = initial_function(global_env)
-            raw_code = global_env.get_value(function_name)
             blocks = item[0].blocks
             threads = item[0].threads
             arguments = item[0].construct_running_arguments()
             for idx, variable in enumerate(raw_code.argument_lst):
                 if variable not in arguments and raw_code.type_lst[idx].find("*") == -1:
                     arguments[variable] = 2  # temp action, need more focus
-            arguments = generate_arguments(global_env.get_value(function_name), arguments)
-            arguments["main_memory"] = main_memory
+            arguments = generate_arguments(raw_code, arguments)
+            arguments["main_memory"] = raw_code.main_memory
             execute_framework_dynamical(blocks, threads, raw_code.raw_codes, arguments, global_env)
             current_time = time.time()
             print "Current solution total cost time is " + str(current_time - start_time)
     if not executed:
         for item in solution_lst:
-            global_env = parse_function(target_file_path)
-            generate_memory_container(main_memory.keys(), global_env)
+            global_env, raw_code = prog_file.parse()
             if initial_function is not None:
                 global_env = initial_function(global_env)
-            raw_code = global_env.get_value(function_name)
+            raw_code = global_env.get_value(prog_file.function_name)
             blocks = item[0].blocks
             threads = item[0].threads
             arguments = item[0].construct_running_arguments()
             for idx, variable in enumerate(raw_code.argument_lst):
                 if variable not in arguments and raw_code.type_lst[idx].find("*") == -1:
                     arguments[variable] = 2  # temp action, need more focus
-            arguments = generate_arguments(global_env.get_value(function_name), arguments)
-            arguments["main_memory"] = main_memory
+            arguments = generate_arguments(raw_code, arguments)
+            arguments["main_memory"] = raw_code.main_memory
             execute_framework_dynamical(blocks, threads, raw_code.raw_codes, arguments, global_env)
             current_time = time.time()
             print "Current solution total cost time is " + str(current_time - start_time)
 
 
-def auto_test_target_function_advanced(target_file_path, function_name, main_memory,
+def auto_test_target_function_advanced(prog_file,
                                        used_default_dimension=False, fixed_dimension=None):
     start_time = time.time()
-    solution_lst = generate_initialized_setting(target_file_path, function_name, main_memory,
+    solution_lst = generate_initialized_setting(prog_file,
                                                 evolve_dimension=not used_default_dimension,
                                                 fixed_dimension=fixed_dimension)
     print "Generation time is " + str(time.time() - start_time)
@@ -491,17 +482,15 @@ def auto_test_target_function_advanced(target_file_path, function_name, main_mem
             if solution_str in used_solution:
                 continue
             used_solution[solution_str] = True
-            global_env = parse_function(target_file_path)
-            generate_memory_container(main_memory.keys(), global_env)
-            raw_code = global_env.get_value(function_name)
+            global_env, raw_code = prog_file.parse()
             blocks = item[0].blocks
             threads = item[0].threads
             arguments = item[0].construct_running_arguments()
             for idx, variable in enumerate(raw_code.argument_lst):
                 if variable not in arguments and raw_code.type_lst[idx].find("*") == -1:
                     arguments[variable] = 2  # temp action, need more focus
-            arguments = generate_arguments(global_env.get_value(function_name), arguments)
-            arguments["main_memory"] = main_memory
+            arguments = generate_arguments(raw_code, arguments)
+            arguments["main_memory"] = raw_code.main_memory
             execute_framework_advanced(blocks, threads, raw_code.raw_codes, arguments, global_env)
             print "Current cost time is " + str(time.time() - start_time)
 

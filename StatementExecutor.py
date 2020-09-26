@@ -90,9 +90,9 @@ class Executor:
         return new_type, None, None, None
 
     def is_target_memory(self, data_type):
-        if data_type.value == self.main_memory['global']:
+        if data_type.value in self.main_memory['global']:
             return True
-        if data_type.value == self.main_memory['shared']:
+        if data_type.value in self.main_memory['shared']:
             return True  # is shared memory
         return False
 

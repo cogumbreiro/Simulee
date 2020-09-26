@@ -3,13 +3,11 @@ from Evolution import auto_test_target_function_advanced
 from Evolution import auto_test_target_function_dynamical
 from DetectBug import generate_random_data_for_memory
 from DetectBug import generate_memory_container
+from DataStructure import ProgramFile
 
 
 def test_device_global():
-    auto_test_target_function("./read_write_test.ll", "@_Z13device_globalPji", {
-        "global": "%input_array",
-        "shared": None
-    })
+    auto_test_target_function(ProgramFile("./read_write_test.ll", "@_Z13device_globalPji"))
     # }, fixed_dimension=[(1, 1, 1), (5, 1, 1)], used_default_dimension=True)
 
 

@@ -57,8 +57,8 @@ def test_copy_low_upp():
     global_current_env = parse_function("./kaldi-new-bug/new-func.ll")
     arguments = generate_arguments(global_current_env.get_value("@_Z13_copy_low_uppPfii"), {"%rows": 23, "%stride": 1})
     arguments["main_memory"] = {
-        'global': "%A",
-        'shared': None,
+        'global': ["%A"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -75,8 +75,8 @@ def test_device_global():
     global_current_env = parse_function("./read_write_test.ll")
     arguments = generate_arguments(global_current_env.get_value("@_Z13device_globalPji"), {"%num_elements": 5})
     arguments["main_memory"] = {
-        'global': "%input_array",
-        'shared': None,
+        'global': ["%input_array"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -93,8 +93,8 @@ def test_arrayfire_reduce():
     global_current_env = parse_function("./arrayfire-repair/reduce-repair.ll")
     arguments = generate_arguments(global_current_env.get_value("@_Z11warp_reducePd"), {})
     arguments["main_memory"] = {
-        'global': "%s_ptr",
-        'shared': None,
+        'global': ["%s_ptr"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -110,8 +110,8 @@ def test_copy_upp_low():
     global_current_env = parse_function("./kaldi-new-bug/new-func.ll")
     arguments = generate_arguments(global_current_env.get_value("@_Z13_copy_upp_lowPfii"), {"%rows": 5, "%stride": 0})
     arguments["main_memory"] = {
-        'global': "%A",
-        'shared': None,
+        'global': ["%A"],
+        'shared': [],
     }
     generate_memory_container(["@_ZZ20_trace_mat_mat_transPKfS0_iiiiPfE4ssum"], global_current_env)
 
@@ -135,8 +135,8 @@ def test_add_diag_vec_mat():
         "%mat2_col_stride": 9,
     })
     arguments["main_memory"] = {
-        'global': "%mat",
-        'shared': None,
+        'global': ["%mat"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -156,8 +156,8 @@ def test_copy_from_tp():
         "%dmat_stride": 1,
     })
     arguments["main_memory"] = {
-        'global': "%A",
-        'shared': None,
+        'global': ["%A"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -178,8 +178,8 @@ def test_copy_from_mat():
         "%d_in_stride": 1,
     })
     arguments["main_memory"] = {
-        'global': "%mat_out",
-        'shared': None,
+        'global': ["%mat_out"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -200,8 +200,8 @@ def test_trace_mat_mat_trans():
         "%B_stride": 1,
     })
     arguments["main_memory"] = {
-        'global': None, # "%value",
-        'shared': "@_ZZ20_trace_mat_mat_transPKfS0_iiiiPfE4ssum",
+        'global': [], # "%value",
+        'shared': ["@_ZZ20_trace_mat_mat_transPKfS0_iiiiPfE4ssum"],
     }
     generate_memory_container(["@_ZZ20_trace_mat_mat_transPKfS0_iiiiPfE4ssum"], global_current_env)
 
@@ -256,8 +256,8 @@ def test_slice():
         "%d_in_stride": 1,
     })
     arguments["main_memory"] = {
-        'global': "%y",
-        'shared': None,
+        'global': ["%y"],
+        'shared': [],
     }
     generate_memory_container(["%off"], global_current_env)
     target_memory = global_current_env.get_value("memory_container")
@@ -280,8 +280,8 @@ def test_convnet_kReflectH():
         "%checkCaseBounds": 1,
     })
     arguments["main_memory"] = {
-        'global': "%target",
-        'shared': None,
+        'global': ["%target"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -302,8 +302,8 @@ def test_convnet_kTile():
         "%tgtHeight": 5,
     })
     arguments["main_memory"] = {
-        'global': "%tgt",
-        'shared': None,
+        'global': ["%tgt"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -321,8 +321,8 @@ def test_convnet_kDotProduct_r():
         "%numElements": 5,
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ13kDotProduct_rPfS_S_jE5shmem",
+        'global': [],
+        'shared': ["@_ZZ13kDotProduct_rPfS_S_jE5shmem"],
     }
     generate_memory_container(["%off"], global_current_env)
     target_memory = global_current_env.get_value("memory_container")
@@ -346,8 +346,8 @@ def test_thundersvm_c_smo_solve_kernel():
         "%max_t_iter": 3,
     })
     arguments["main_memory"] = {
-        'global': "%alpha",
-        'shared': "@_ZZ18c_smo_solve_kernelPKiPfS1_S1_S0_iffPKfS3_ifS1_iE10shared_mem",
+        'global': ["%alpha"],
+        'shared': ["@_ZZ18c_smo_solve_kernelPKiPfS1_S1_S0_iffPKfS3_ifS1_iE10shared_mem"],
     }
     generate_memory_container([], global_current_env)
 
@@ -373,8 +373,8 @@ def test_arrayfire_convolve2():
         "%fLen1": 1,
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ9convolve2PiS_iS_S_S_S_iiiiiiiiE7shrdMem",
+        'global': [],
+        'shared': ["@_ZZ9convolve2PiS_iS_S_S_S_iiiiiiiiE7shrdMem"],
     }
     generate_memory_container(["%out_strides", "%out_dims", "%signal_strides", "%signal_dims"], global_current_env)
     target_memory = global_current_env.get_value("memory_container")
@@ -397,8 +397,8 @@ def test_cuda_sift_MatchSiftPoints():
         "%numPts2": 2,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': "@_ZZ15MatchSiftPointsPfS_S_iiE4sums",
+        'global': ["%corrData"],
+        'shared': ["@_ZZ15MatchSiftPointsPfS_S_iiE4sums"],
     }
     generate_memory_container([], global_current_env)
 
@@ -417,8 +417,8 @@ def test_cuda_sift_MatchSiftPoints2():
         "%numPts2": 2,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': "@_ZZ16MatchSiftPoints2PfS_S_iiE11siftPoints1",
+        'global': ["%corrData"],
+        'shared': ["@_ZZ16MatchSiftPoints2PfS_S_iiE11siftPoints1"],
     }
     generate_memory_container([], global_current_env)
 
@@ -437,8 +437,8 @@ def test_cuda_sift_MatchSiftPoints3():
         "%numPts2": 2,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': None,
+        'global': ["%corrData"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -457,8 +457,8 @@ def test_cuda_sift_MatchSiftPoints4():
         "%numPts2": 2,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': None,
+        'global': ["%corrData"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -478,8 +478,8 @@ def test_cuda_sift_FindMaxCorr():
         "%siftSize": 3,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': "@_ZZ11FindMaxCorrPfS_S_iiiE8maxIndex",
+        'global': ["%corrData"],
+        'shared': ["@_ZZ11FindMaxCorrPfS_S_iiiE8maxIndex"],
     }
     generate_memory_container([], global_current_env)
 
@@ -497,8 +497,8 @@ def test_cudamat_random():
         "%numElements": 16,
     })
     arguments["main_memory"] = {
-        'global': "%rndWords",
-        'shared': None,
+        'global': ["%rndWords"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
 
@@ -517,8 +517,8 @@ def test_cudamat_kMinColumnwise():
         "%height": 9,
     })
     arguments["main_memory"] = {
-        'global': "%target",
-        'shared': "@_ZZ14kMinColumnwisePfS_jjE8min_vals",
+        'global': ["%target"],
+        'shared': ["@_ZZ14kMinColumnwisePfS_jjE8min_vals"],
     }
     generate_memory_container(["%mat"], global_current_env)
     target_memory = global_current_env.get_value("memory_container")
@@ -538,8 +538,8 @@ def test_cuda_cnn_g_getCost_3():
         "%wlen": 5,
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ11g_getCost_3PfS_fiE4_sum",
+        'global': [],
+        'shared': ["@_ZZ11g_getCost_3PfS_fiE4_sum"],
     }
     generate_memory_container([], global_current_env)
     raw_code = global_current_env.get_value("@_Z11g_getCost_3PfS_fi")
@@ -558,8 +558,8 @@ def performance_sync_FindMaxCorr():
         "%siftSize": 3,
     })
     arguments["main_memory"] = {
-        'global': "%corrData",
-        'shared': "@_ZZ11FindMaxCorrPfS_S_iiiE8maxIndex",
+        'global': ["%corrData"],
+        'shared': ["@_ZZ11FindMaxCorrPfS_S_iiiE8maxIndex"],
     }
     generate_memory_container([], global_current_env)
 
@@ -578,8 +578,8 @@ def performance_sync_cuda_cnn_g_getCost_3():
         "%wlen": 5,
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ11g_getCost_3PfS_fiE4_sum",
+        'global': [],
+        'shared': ["@_ZZ11g_getCost_3PfS_fiE4_sum"],
     }
     generate_memory_container([], global_current_env)
     raw_code = global_current_env.get_value("@_Z11g_getCost_3PfS_fi")
@@ -596,8 +596,8 @@ def performance_sync_cudpp_sparseMatrixVectorSetFlags():
         "%numRows": 5,
     })
     arguments["main_memory"] = {
-        'global': "%d_rowindx",
-        'shared': None,
+        'global': ["%d_rowindx"],
+        'shared': [],
     }
     generate_memory_container([], global_current_env)
     raw_code = global_current_env.get_value("@_Z26sparseMatrixVectorSetFlagsPjPKjj")
@@ -616,8 +616,8 @@ def test_xmrig():
         "%partidx": 0,
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ27cryptonight_core_gpu_phase3iiiPKjPjS1_E12sharedMemory",
+        'global': [],
+        'shared': ["@_ZZ27cryptonight_core_gpu_phase3iiiPKjPjS1_E12sharedMemory"],
     }
     generate_memory_container([], global_current_env)
     raw_code = global_current_env.get_value("@_Z27cryptonight_core_gpu_phase3iiiPKjPjS1_")
@@ -635,8 +635,8 @@ def test_gunrock():
         "%iter": 0,
     })
     arguments["main_memory"] = {
-        'global': "%froms_out",
-        'shared': None,
+        'global': ["%froms_out"],
+        'shared': [],
     }
     generate_memory_container(["%pos", "%intersect", ], global_current_env)
     target_memory = global_current_env.get_value("memory_container")
@@ -708,8 +708,8 @@ def test_kaldi_repair_add_mat():
         "%M_col_stride": 2
     })
     arguments["main_memory"] = {
-        'global': None,
-        'shared': "@_ZZ17_add_diag_mat_matdPdiPKdiiiS1_iidE9temp_data",
+        'global': [],
+        'shared': ["@_ZZ17_add_diag_mat_matdPdiPKdiiiS1_iidE9temp_data"],
     }
     generate_memory_container([], global_current_env)
     raw_code = global_current_env.get_value("@_Z17_add_diag_mat_matdPdiPKdiiiS1_iid")

@@ -1,6 +1,6 @@
 import re
 import copy
-
+from collections import OrderedDict
 
 # if is a memory pointer, value start with ("%")
 # memory-index: data_type: memory-index value: memory based value is_get: true memory_index: int
@@ -318,17 +318,42 @@ class Function(object):
         self.type_lst = type_lst
         self.function_name = func_name
         self.raw_codes = target_codes
+        self.args = OrderedDict(zip(self.argument_lst, self.type_lst))
+        self.globals = set(
+            name
+            for name, ty in zip(self.argument_lst, self.type_lst)
+            if ty.endswith("*")
+        )
+        self.shared = dict()
+
     def __repr__(self):
         return "Function" + repr(self.args)
 
+    @property
+    def main_memory(self):
+        return {
+            "global": self.globals,
+            "shared": set(x for x in self.shared)
+        }
+
+    def generate_memory_container(self, global_env):
+        memory_container = MemoryContainer()
+        for item in self.globals:
+            memory_container.add_new_memory(item)
+        for item in self.shared:
+            memory_container.add_new_memory(item)
+        global_env.add_value("memory_container", memory_container)
 
     @staticmethod
     def read_function_from_file(target_file, target_env):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
-        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)([^{]*){(?P<body>[^}]+)}"
+        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){(?P<body>[^}]+)}"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
+            modifier = single_function.group('modifier').split(" ")
+            if '"__device__"' not in modifier and '"__host__"' not in modifier:
+                continue
             function_name = single_function.group('function_name')
             argument = single_function.group('argument')
             argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
@@ -356,7 +381,7 @@ class Function(object):
         return result_content[: len(result_content) - 1]
 
     @staticmethod
-    def read_shared_section(target_file, target_env):
+    def read_shared_file(target_file):
         shared = dict()
         for line in open(target_file, 'r'):
             if line.startswith("@"):
@@ -372,6 +397,11 @@ class Function(object):
                         data = data[1]
                         data = data.split("]")[0]
                         shared[name] = data + "*"
+        return shared
+
+    @staticmethod
+    def read_shared_section(target_file, target_env):
+        shared = Function.read_shared_file(target_file)
         for func in target_env.env.values():
             if isinstance(func, Function):
                 func.shared = dict(shared)
@@ -381,10 +411,13 @@ class Function(object):
     def read_function_from_file_include_struct(target_file, target_env):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
-        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)([^{]*){"
+        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
+            modifier = single_function.group('modifier').split(" ")
             function_name = single_function.group('function_name')
+            if '"__device__"' not in modifier and '"__host__"' not in modifier:
+                continue
             argument = single_function.group('argument')
             argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
             body = Function.parse_function_body(content, single_function.end() + 1)
@@ -395,6 +428,22 @@ class Function(object):
             target_env.add_value(function_name, target_function)
         # Infer shared sections automatically
         Function.read_shared_section(target_file, target_env)
+
+class ProgramFile(object):
+    def __init__(self, target_file_path, function_name):
+        self.target_file_path = target_file_path
+        self.function_name = function_name
+
+    def parse(self, generate_memory_container=True):
+        global_env = Environment()
+        Function.read_function_from_file_include_struct(self.target_file_path, global_env)
+        raw_code = global_env.get_value(self.function_name)
+        if generate_memory_container:
+            raw_code.generate_memory_container(global_env)
+        return global_env, raw_code
+
+    def parse_shared(self):
+        return Function.read_shared_file(self.target_file_path)
 
 class ProgramFlow(object):
 
@@ -634,4 +683,7 @@ def main_test():
                                   parse_target_memory_and_checking_sync, parse_target_memory_and_checking_sync, global_env_test)
 
 if __name__ == '__main__':
-    Function.read_function_from_file_include_struct("./kaldi-new-bug/cu-kernels.ll", Environment())
+    global_env_test = Environment()
+    Function.read_shared_section("./cudaSift-new-bug/new-func.ll", global_env_test)
+    print global_env_test
+#    Function.read_function_from_file_include_struct("./kaldi-new-bug/cu-kernels.ll", Environment())
