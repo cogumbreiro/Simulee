@@ -348,9 +348,12 @@ class Function(object):
     def read_function_from_file(target_file, target_env):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
-        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)([^{]*){(?P<body>[^}]+)}"
+        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){(?P<body>[^}]+)}"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
+            modifier = single_function.group('modifier').split(" ")
+            if '"__device__"' not in modifier and '"__host__"' not in modifier:
+                continue
             function_name = single_function.group('function_name')
             argument = single_function.group('argument')
             argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
@@ -408,10 +411,13 @@ class Function(object):
     def read_function_from_file_include_struct(target_file, target_env):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
-        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)([^{]*){"
+        function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
+            modifier = single_function.group('modifier').split(" ")
             function_name = single_function.group('function_name')
+            if '"__device__"' not in modifier and '"__host__"' not in modifier:
+                continue
             argument = single_function.group('argument')
             argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
             body = Function.parse_function_body(content, single_function.end() + 1)
