@@ -171,7 +171,7 @@ def execute_heuristic(blocks, threads, raw_codes, arguments,
                 if should_print:
                     print current_stmt + " in " + str(block_indexes) + " + " + str(thread_indexes)
                 return_value, current_action, current_index, is_global = \
-                    execute_statement_and_get_action(current_stmt, kernel_codes, main_memory, global_env, local_env)
+                    Interpreter(kernel_codes, main_memory, global_env, local_env).execute_statement_and_get_action(current_stmt)
                 if current_action is not None:
                     if is_global:
                         current_access_dict = access_dict
@@ -213,7 +213,7 @@ def execute_branch_heuristic(blocks, threads, raw_codes, arguments, global_env=N
                 if should_print:
                     print current_stmt + " in " + str(block_indexes) + " + " + str(thread_indexes)
                 return_value, current_action, current_index, is_global = \
-                    execute_statement_and_get_action(current_stmt, kernel_codes, main_memory, global_env, local_env)
+                    Interpreter(kernel_codes, main_memory, global_env, local_env).execute_statement_and_get_action(current_stmt)
     return access_label_dict
 
 
@@ -348,5 +348,3 @@ if __name__ == "__main__":
     #     target_dict = execute_heuristic(test_block, test_thread, raw_code, t_arguments, global_current_env, False)
     #     print target_dict
     #     print '===================='
-
-
