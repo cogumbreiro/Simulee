@@ -14,6 +14,9 @@ class DataType(object):
         self.memory_index = None  # only active when is_getelementptr is True and memory_index not depend on running time
         self.is_depend_on_running_time = False  # if this value can only be specify during running time
 
+    def __repr__(self):
+        return "Data" + repr({self.value:self.data_type})
+
     def copy_and_replace(self, other_type):
         other_type.data_type = self.data_type
         other_type.value = self.value
@@ -315,6 +318,9 @@ class Function(object):
         self.type_lst = type_lst
         self.function_name = func_name
         self.raw_codes = target_codes
+    def __repr__(self):
+        return "Function" + repr(self.args)
+
 
     @staticmethod
     def read_function_from_file(target_file, target_env):
@@ -479,6 +485,8 @@ class Environment(object):
     def has_given_key(self, key):
         return key in self.env
 
+    def __repr__(self):
+        return "Env" + repr(self.env) 
 
 class StackSet(object):
 
