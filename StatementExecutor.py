@@ -71,7 +71,7 @@ def parse_arguments(target_args):
             result[index] = result[index][element_index:]
     return result
 
-class Interpreter:
+class Executor:
     def __init__(self, kernel_codes, main_memory, global_env, local_env):
         self.kernel_codes = kernel_codes
         self.main_memory = main_memory
@@ -103,9 +103,9 @@ class Interpreter:
         local_arguments = local_arguments.replace("(", "")
         local_arguments = local_arguments.replace(")", "")
         local_arguments = local_arguments.split(",")
-        target = self.execute_item(local_arguments[0])
+        target = self._execute_item(local_arguments[0])
         local_arguments = [item for item in local_arguments if item.find('!dbg') == -1 and item.find('align') == -1]
-        tmp_index = self.execute_item(local_arguments[-1])
+        tmp_index = self._execute_item(local_arguments[-1])
         if is_memory(target):
             result_tmp = DataType('memory-index')
             result_tmp.set_is_getelementptr(True)
@@ -129,8 +129,8 @@ class Interpreter:
     def on_store(self, arguments):
         arguments = arguments.strip()
         arguments = parse_arguments(arguments)
-        source = self.execute_command(arguments[0])[0]
-        target = self.execute_command(arguments[1])[0]
+        source = self._execute_command(arguments[0])[0]
+        target = self._execute_command(arguments[1])[0]
         if self.is_target_memory(target) and target.memory_index is not None and target.is_getelementptr is True:
             if arguments[1].find("**") == -1:
                 target_memory = self.global_env.get_value("memory_container")
@@ -156,9 +156,9 @@ class Interpreter:
         target_command = arguments[split_index + 1:]
         target_type = arguments[: split_index]
         if target_command.find('getelementptr') != -1:
-            result = self.execute_command(arguments[split_index + 1:])[0]
+            result = self._execute_command(arguments[split_index + 1:])[0]
         else:
-            result = self.execute_item(target_command.split(',')[0])
+            result = self._execute_item(target_command.split(',')[0])
         if self.is_target_memory(result) and result.memory_index is not None and result.is_getelementptr is True \
                 and result.is_depend_on_running_time is False:  # haven't been loaded to register
             result.set_is_depend_on_running_time(True)
@@ -199,7 +199,7 @@ class Interpreter:
             return None, None, None, None
         argus_value = matcher.group('argus')
         argus_value = parse_arguments(argus_value)
-        argus_value = [self.execute_command(single_value)[0]
+        argus_value = [self._execute_command(single_value)[0]
                     for single_value in argus_value]
         argus_dict = dict()
         value_index = 0
@@ -219,7 +219,7 @@ class Interpreter:
             arguments = arguments.split(',')[0]
             split_index = arguments.find(' ')
             arguments = arguments[split_index + 1:].strip()
-            result = self.execute_item(arguments)
+            result = self._execute_item(arguments)
             self.kernel_codes.set_return_value(result)
             self.kernel_codes.restore_after_execution_function(self.local_env)
             return result, None, None, None
@@ -243,8 +243,8 @@ class Interpreter:
         split_index = actual_arguments.find(' ')
         actual_arguments = actual_arguments[split_index + 1:]
         actual_arguments = actual_arguments.split(',')
-        number_one = self.execute_item(actual_arguments[0])
-        number_two = self.execute_item(actual_arguments[1])
+        number_one = self._execute_item(actual_arguments[0])
+        number_two = self._execute_item(actual_arguments[1])
         if number_two.is_depend_on_running_time or number_one.is_depend_on_running_time:
             result_tmp.set_is_depend_on_running_time(True)
         else:
@@ -264,7 +264,7 @@ class Interpreter:
         else:
             new_line = arguments[split_index + 1:].strip()
             new_line = new_line.split(',')
-            bool_res = self.execute_item(new_line[0])
+            bool_res = self._execute_item(new_line[0])
             if_true = new_line[1][new_line[1].find('%') + 1:]
             if_false = new_line[2][new_line[2].find('%') + 1:]
             if bool_res.is_depend_on_running_time:
@@ -290,17 +290,17 @@ class Interpreter:
         matcher = argus_pattern.search(should_handle)
         recent_label = '%' + self.kernel_codes.get_recently_label()
         if recent_label == matcher.group("label1"):
-            return self.execute_command(matcher.group("value1"))
+            return self._execute_command(matcher.group("value1"))
         else:
-            return self.execute_command(matcher.group("value2"))
+            return self._execute_command(matcher.group("value2"))
 
 
     def on_select(self, arguments):
         arguments = arguments.strip()
         condition, value_one, value_two = arguments.split(',')[: 3]
-        condition_value = self.execute_item(condition)
-        value_one_real = self.execute_item(value_one)
-        value_two_real = self.execute_item(value_two)
+        condition_value = self._execute_item(condition)
+        value_one_real = self._execute_item(value_one)
+        value_two_real = self._execute_item(value_two)
         if condition_value.is_depend_on_running_time:
             result_tmp = DataType(value_one_real.get_type())
             result_tmp.set_is_depend_on_running_time(True)
@@ -317,8 +317,8 @@ class Interpreter:
             arguments = arguments.split(',')
             var_lst = arguments[0].strip().split(' ')
             tmp_result = DataType(var_lst[0].strip())
-            number_one = self.execute_item(var_lst[1].strip())
-            number_two = self.execute_item(arguments[1])
+            number_one = self._execute_item(var_lst[1].strip())
+            number_two = self._execute_item(arguments[1])
             if number_one.is_depend_on_running_time or number_two.is_depend_on_running_time:
                 tmp_result.set_is_depend_on_running_time(True)
                 return tmp_result, None, None, None
@@ -359,7 +359,7 @@ class Interpreter:
         def __cal(self, arguments):
             arguments = arguments.strip()
             arguments = arguments.split(' ')
-            old_data = self.execute_item(arguments[1])
+            old_data = self._execute_item(arguments[1])
             new_data = DataType('..')
             old_data.copy_and_replace(new_data)
             new_data.set_type(arguments[3])
@@ -379,8 +379,7 @@ class Interpreter:
 
     del calculation_factory, single_elem_calculation_factory
 
-
-    def execute_item(self, statement):
+    def _execute_item(self, statement):
         statement = statement.strip()
         split_index = find_the_correct_space(statement)
         if split_index == -1:
@@ -390,7 +389,7 @@ class Interpreter:
             data_type = statement[: split_index].strip()
             data_token = statement[split_index:].strip()
         if data_token.find('getelementptr') != -1:
-            return self.execute_command(data_token)[0]
+            return self._execute_command(data_token)[0]
         if self.global_env.has_given_key(data_token):
             return self.global_env.get_value(data_token)
         if self.local_env.has_given_key(data_token):
@@ -414,31 +413,31 @@ class Interpreter:
             return result_tmp
 
 
-    def execute_command(self, statement):
+    def _execute_command(self, statement):
         statement = statement.strip()
         split_index = statement.find(' ')
         operator = statement[: split_index].strip()
         arguments = statement[split_index:].strip()
         if not hasattr(self, "on_" + operator):
-            return self.execute_item(statement), None, None, None
+            return self._execute_item(statement), None, None, None
         return getattr(self, "on_"  + operator)(arguments)
 
 
-    def execute_assign(self, statement):
+    def _execute_assign(self, statement):
         tmp_arr = statement.split("=")
         target_var = tmp_arr[0].strip()
         if '='.join(tmp_arr[1:]).find("call") != -1:
             self.kernel_codes.set_need_return_token(str(target_var))
-        return_value, action, current_index, is_global = self.execute_command('='.join(tmp_arr[1:]))
+        return_value, action, current_index, is_global = self._execute_command('='.join(tmp_arr[1:]))
         self.local_env.add_value(str(target_var), return_value)
         return return_value, action, current_index, is_global
 
 
-    def execute_statement_and_get_action(self, current_stmt):
+    def run(self, current_stmt):
         if len(re.findall(r"(@|%)\w+\s*=\s*(.*)", current_stmt, re.DOTALL)) != 0:
-            return self.execute_assign(current_stmt)
+            return self._execute_assign(current_stmt)
         else:
-            return self.execute_command(current_stmt)
+            return self._execute_command(current_stmt)
 
 
 if __name__ == '__main__':

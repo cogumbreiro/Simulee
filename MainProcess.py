@@ -93,7 +93,7 @@ def construct_memory_execute_mode(blocks, threads, global_size, shared_size, raw
                             visit_order_for_shared_memory[current_visited_shared_memory_index.pop()] += 1
                 else:
                     return_value, current_action, current_index, is_global = \
-                        Interpreter(kernel_codes, main_memory, global_env, local_env).execute_statement_and_get_action(current_stmt)
+                        Executor(kernel_codes, main_memory, global_env, local_env).run(current_stmt)
                     if current_action is None:
                         continue
                     branch_marking_function = kernel_codes.get_token_string()
@@ -205,7 +205,7 @@ def construct_memory_execute_mode_for_barrier(blocks, threads, global_size, shar
                         shared_mem.set_flag()
                 else:
                     return_value, current_action, current_index, is_global = \
-                        Interpreter(kernel_codes, main_memory, global_env, local_env).execute_statement_and_get_action(current_stmt)
+                        Executor(kernel_codes, main_memory, global_env, local_env).run(current_stmt)
                     if current_action is None:
                         continue
                     branch_marking_function = kernel_codes.get_token_string()
@@ -326,7 +326,7 @@ def construct_memory_execute_mode_dynamically(blocks, threads, global_size, shar
                             visit_order_for_shared_memory[current_visited_shared_memory_index.pop()] += 1
                 else:
                     return_value, current_action, current_index, is_global = \
-                        Interpreter(kernel_codes, main_memory, global_env, local_env).execute_statement_and_get_action(current_stmt)
+                        Executor(kernel_codes, main_memory, global_env, local_env).run(current_stmt)
                     if current_action is None:
                         continue
                     branch_marking_function = kernel_codes.get_token_string()
@@ -449,8 +449,8 @@ def construct_memory_execute_mode_dynamically_for_barrier(blocks, threads, globa
                             shared_mem.set_flag()
                     else:
                         return_value, current_action, current_index, is_global = \
-                            Interpreter(kernel_codes, main_memory, global_env,
-                                                             local_env).execute_statement_and_get_action(current_stmt)
+                            Executor(kernel_codes, main_memory, global_env,
+                                                             local_env).run(current_stmt)
                         if current_action is None:
                             continue
                         branch_marking_function = kernel_codes.get_token_string()
