@@ -309,6 +309,13 @@ class KernelCodes(object):
     def is_over(self):
         return len(self.codes) <= self.current_line
 
+def is_kernel_function(modifier):
+    modifier = modifier.split(" ")
+    return (
+        '"__device__"' in modifier or
+        '"__host__"' in modifier or
+        '"__global__"' in modifier
+    )
 
 class Function(object):
 
@@ -345,24 +352,23 @@ class Function(object):
         global_env.add_value("memory_container", memory_container)
 
     @staticmethod
-    def read_function_from_file(target_file, target_env):
+    def read_function_from_file(target_file, target_env, filter_unknown=True):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
         function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){(?P<body>[^}]+)}"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
-            modifier = single_function.group('modifier').split(" ")
-            if '"__device__"' not in modifier and '"__host__"' not in modifier:
-                continue
-            function_name = single_function.group('function_name')
-            argument = single_function.group('argument')
-            argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
-            body = single_function.group('body')
-            argument_lst = [item.split(' ') for item in argument]
-            type_lst = [item[0] for item in argument_lst]
-            argument_lst = [item[1] for item in argument_lst]
-            target_function = Function(body, function_name, argument_lst, type_lst)
-            target_env.add_value(function_name, target_function)
+            is_kernel = is_kernel_function(single_function.group('modifier'))
+            if not filter_unknown or is_kernel:
+                function_name = single_function.group('function_name')
+                argument = single_function.group('argument')
+                argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
+                body = single_function.group('body')
+                argument_lst = [item.split(' ') for item in argument]
+                type_lst = [item[0] for item in argument_lst]
+                argument_lst = [item[1] for item in argument_lst]
+                target_function = Function(body, function_name, argument_lst, type_lst)
+                target_env.add_value(function_name, target_function)
         # Infer shared sections automatically
         Function.read_shared_section(target_file, target_env)
 
@@ -408,35 +414,35 @@ class Function(object):
 
 
     @staticmethod
-    def read_function_from_file_include_struct(target_file, target_env):
+    def read_function_from_file_include_struct(target_file, target_env, filter_unknown=True):
         content = open(target_file, 'r').read()
         content = re.sub(r'call void @llvm\.\w+\.\w+\([^\n]*[\n]', "\n", content)
         function_pattern = r"define([^@]*)(?P<function_name>[@|\w]+)\((?P<argument>[^)]+)\)(?P<modifier>[^{]*){"
         function_pattern = re.compile(function_pattern, re.DOTALL)
         for single_function in function_pattern.finditer(content):
-            modifier = single_function.group('modifier').split(" ")
+            is_kernel = is_kernel_function(single_function.group('modifier'))
             function_name = single_function.group('function_name')
-            if '"__device__"' not in modifier and '"__host__"' not in modifier:
-                continue
-            argument = single_function.group('argument')
-            argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
-            body = Function.parse_function_body(content, single_function.end() + 1)
-            argument_lst = [item.split(' ') for item in argument]
-            type_lst = [item[0] for item in argument_lst]
-            argument_lst = [item[1] for item in argument_lst]
-            target_function = Function(body, function_name, argument_lst, type_lst)
-            target_env.add_value(function_name, target_function)
+            if not filter_unknown or is_kernel:
+                argument = single_function.group('argument')
+                argument = [item.strip() for item in argument.split(',') if len(item.strip()) != 0]
+                body = Function.parse_function_body(content, single_function.end() + 1)
+                argument_lst = [item.split(' ') for item in argument]
+                type_lst = [item[0] for item in argument_lst]
+                argument_lst = [item[1] for item in argument_lst]
+                target_function = Function(body, function_name, argument_lst, type_lst)
+                target_env.add_value(function_name, target_function)
         # Infer shared sections automatically
         Function.read_shared_section(target_file, target_env)
 
 class ProgramFile(object):
-    def __init__(self, target_file_path, function_name):
+    def __init__(self, target_file_path, function_name, filter_unknown=True):
         self.target_file_path = target_file_path
         self.function_name = function_name
+        self.filter_unknown = filter_unknown
 
     def parse(self, generate_memory_container=True):
         global_env = Environment()
-        Function.read_function_from_file_include_struct(self.target_file_path, global_env)
+        Function.read_function_from_file_include_struct(self.target_file_path, global_env, self.filter_unknown)
         raw_code = global_env.get_value(self.function_name)
         if generate_memory_container:
             raw_code.generate_memory_container(global_env)
