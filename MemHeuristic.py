@@ -264,10 +264,10 @@ def trace_branch_variable(branch_codes, codes):
     return result_lst
 
 
-def generate_branch_heuristic_code(target_file, target_function_name):
-    global_env = parse_function(target_file)
-    depended_vars, codes, depended_initial_var = generate_variable_depend_path(global_env, target_function_name)
-    initial_var_type = parse_initial_var_type(global_env, target_function_name)
+def generate_branch_heuristic_code(prog_file):
+    global_env, _ = prog_file.parse(generate_memory_container=False)
+    depended_vars, codes, depended_initial_var = generate_variable_depend_path(global_env, prog_file.function_name)
+    initial_var_type = parse_initial_var_type(global_env, prog_file.function_name)
     branch_codes, total_labels = parse_branch_var(codes)
     line_lst = set()
     should_evolution = set()
@@ -287,29 +287,27 @@ def generate_branch_heuristic_code(target_file, target_function_name):
     should_evolution = [(item, initial_var_type[item]) for item in should_evolution]
     all_variable_lst = [(item, initial_var_type[item]) for item in initial_var_type
                         if initial_var_type[item].find("*") == -1]
-    return line_lst, global_env, should_evolution, all_variable_lst, parse_dimension(global_env, target_function_name)
+    return line_lst, global_env, should_evolution, all_variable_lst, parse_dimension(global_env, prog_file.function_name)
 
 
-def generate_heuristic_code(target_file, target_function_name, main_memory):
-    global_env = parse_function(target_file)
-    depended_vars, codes, depended_initial_var = generate_variable_depend_path(global_env, target_function_name)
-    initial_var_type = parse_initial_var_type(global_env, target_function_name)
+def generate_heuristic_code(prog_file):
+    global_env, raw_code = prog_file.parse(generate_memory_container=False)
+    depended_vars, codes, depended_initial_var = generate_variable_depend_path(global_env, prog_file.function_name)
+    initial_var_type = parse_initial_var_type(global_env, prog_file.function_name)
     line_lst = list()
     used_line = dict()
     should_evolution = list()
-    for mem_type in main_memory:
-        current_mem = main_memory[mem_type]
-        # if current_mem is None:
-        #     continue
-        involved_mem_store_load = trace_target_memory(global_env, target_function_name, current_mem)
-        var_code_dict = generate_depended_code_lst(codes, involved_mem_store_load, depended_vars)
-        for single_var in var_code_dict:
-            if single_var in depended_initial_var:
-                should_evolution.append(depended_initial_var[single_var])
-            for each_line in var_code_dict[single_var]:
-                if each_line[1] not in used_line:
-                    used_line[each_line[1]] = True
-                    line_lst.append(each_line)
+    for mem_type, elems in raw_code.main_memory.items():
+        for current_mem in elems:
+            involved_mem_store_load = trace_target_memory(global_env, prog_file.function_name, current_mem)
+            var_code_dict = generate_depended_code_lst(codes, involved_mem_store_load, depended_vars)
+            for single_var in var_code_dict:
+                if single_var in depended_initial_var:
+                    should_evolution.append(depended_initial_var[single_var])
+                for each_line in var_code_dict[single_var]:
+                    if each_line[1] not in used_line:
+                        used_line[each_line[1]] = True
+                        line_lst.append(each_line)
     for idx, each_line in enumerate(codes):
         if each_line.find("<label>") != -1:
             line_lst.append((each_line, idx))
@@ -318,7 +316,7 @@ def generate_heuristic_code(target_file, target_function_name, main_memory):
                         for item in sub_list if initial_var_type[item].find("*") == -1]
     all_variable_lst = [(item, initial_var_type[item]) for item in initial_var_type
                         if initial_var_type[item].find("*") == -1]
-    return line_lst, global_env, should_evolution, all_variable_lst, parse_dimension(global_env, target_function_name)
+    return line_lst, global_env, should_evolution, all_variable_lst, parse_dimension(global_env, prog_file.function_name)
 
 
 if __name__ == "__main__":
