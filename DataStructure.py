@@ -361,7 +361,6 @@ class Function(object):
         for line in open(target_file, 'r'):
             if line.startswith("@"):
                 line = line.strip().split("=", 1)
-                print(line)
                 if len(line) != 2:
                     continue
                 name, data = line
